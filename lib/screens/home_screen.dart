@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -11,134 +9,198 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
+  static Duration duration = const Duration(milliseconds: 800);
+  static Cubic defaultCurve = Curves.fastLinearToSlowEaseIn;
+
+  static double outerCardsTiltVal = 0.418; //24 degrees
+  static double middleCardsTiltVal = 0.139; //8 degrees
+
+  static double card1InitRotation = 0.049;
+  static double card2InitRotation = 0.034;
+  static double card3InitRotation = -0.109;
+  static double card4InitRotation = 0.104;
+
+  static double bigCardHeight = 200.0;
+  static double bigCardWidth = 150.0;
+
+  static double smallCardHeight = 70.0;
+  static double smallCardWidth = 55.0;
+
+  bool cardsExpanded = false;
+
   late final AnimationController _controller =
-      AnimationController(vsync: this, duration: Duration(milliseconds: 300));
+      AnimationController(vsync: this, duration: duration);
 
-  // double outerCardsTiltValue = 0.261; //15 degrees
-  // double middleCardsTiltValue = 0.087; //5 degrees
+  late Animation rot1 = buildAnimation(card1InitRotation, -outerCardsTiltVal);
+  late Animation rot2 = buildAnimation(card2InitRotation, -middleCardsTiltVal);
+  late Animation rot3 = buildAnimation(card3InitRotation, middleCardsTiltVal);
+  late Animation rot4 = buildAnimation(card4InitRotation, outerCardsTiltVal);
 
-  double outerCardsTiltValue = 0.418; //24 degrees
-  double middleCardsTiltValue = 0.139; //8 degrees
+  late Animation translate1 = buildAnimation(0.0, -90.0);
+  late Animation translate2 = buildAnimation(-10.0, -30.0);
+  late Animation translate3 = buildAnimation(0.0, 30.0);
+  late Animation translate4 = buildAnimation(10.0, 90.0);
 
-  // double outerCardsTiltValue = 0.6283; //36 degrees
-  // double middleCardsTiltValue = 0.2094; //12 degrees
+  late Animation smallCardRotateLeft = buildAnimation(0.0, -0.408);
+  late Animation smallCardRotateRight = buildAnimation(0.0, 0.408);
+  late Animation smallCardTranslate = buildAnimation(-20.0, -120.0);
 
-  double begin1 = 0.049;
-  double begin2 = 0.034;
-  double begin3 = -0.109;
-  double begin4 = 0.104;
+  late List data = getData();
 
-  bool expanded = false;
   @override
   Widget build(BuildContext context) {
-    // Animation anim = _controller.drive(CurveTween(curve: Curves.decelerate));
-    // Animation anim = _controller.drive(CurveTween(curve: Curves.easeInOutBack));
-
-    Animation anim1 = new Tween(
-      begin: begin1,
-      end: -outerCardsTiltValue,
-    ).animate(
-        new CurvedAnimation(parent: _controller, curve: Curves.decelerate));
-
-    Animation anim2 = new Tween(
-      begin: begin2,
-      end: -middleCardsTiltValue,
-    ).animate(
-        new CurvedAnimation(parent: _controller, curve: Curves.decelerate));
-
-    Animation anim3 = new Tween(
-      begin: begin3,
-      end: middleCardsTiltValue,
-    ).animate(
-        new CurvedAnimation(parent: _controller, curve: Curves.decelerate));
-
-    Animation anim4 = new Tween(
-      begin: begin4,
-      end: outerCardsTiltValue,
-    ).animate(
-        new CurvedAnimation(parent: _controller, curve: Curves.decelerate));
-
     return Scaffold(
+      backgroundColor: Colors.blueGrey,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            if (expanded) {
+            if (cardsExpanded) {
               _controller.reverse();
             } else {
               _controller.forward();
             }
-            expanded = !expanded;
+            cardsExpanded = !cardsExpanded;
           });
         },
       ),
       body: Center(
         child: Stack(children: [
-          AnimatedBuilder(
-            animation: anim1,
-            builder: (_, child) {
-              return Transform.rotate(
-                angle: anim1.value,
-                child: Transform.translate(
-                  offset: Offset((anim1.value - begin1) * 150, 0),
-                  child: Container(
-                    height: 200,
-                    width: 150,
-                    color: Colors.black,
-                  ),
-                ),
-              );
-            },
-          ),
-          AnimatedBuilder(
-            animation: anim2,
-            builder: (_, child) {
-              return Transform.rotate(
-                angle: anim2.value,
-                child: Transform.translate(
-                  offset: Offset((anim2.value - begin2) * 150, 0),
-                  child: Container(
-                    height: 200,
-                    width: 150,
-                    color: Colors.green,
-                  ),
-                ),
-              );
-            },
-          ),
-          AnimatedBuilder(
-            animation: anim3,
-            builder: (_, child) {
-              return Transform.rotate(
-                angle: anim3.value,
-                child: Transform.translate(
-                  offset: Offset((anim3.value - begin3) * 150, 0),
-                  child: Container(
-                    height: 200,
-                    width: 150,
-                    color: Colors.blue,
-                  ),
-                ),
-              );
-            },
-          ),
-          AnimatedBuilder(
-            animation: anim4,
-            builder: (_, child) {
-              return Transform.rotate(
-                angle: anim4.value,
-                child: Transform.translate(
-                  offset: Offset((anim4.value - begin4) * 150, 0),
-                  child: Container(
-                    height: 200,
-                    width: 150,
-                    color: Colors.red,
-                  ),
-                ),
+          ...List.generate(
+            data.length,
+            (index) {
+              var item = data[index];
+              return AnimatedBuilder(
+                animation: item['rotateAnimation'],
+                builder: (_, child) {
+                  return Transform.rotate(
+                    angle: item['rotateAnimation'].value,
+                    child: AnimatedBuilder(
+                      animation: item['translateAnimation'],
+                      builder: (_, child) {
+                        return Transform.translate(
+                          offset: Offset(
+                              (item['translateAnimation'].value *
+                                      item['widthFactor']) -
+                                  item['initialWidthOffset'],
+                              -item['translateAnimation'].value.abs() *
+                                  item['heightFactor']),
+                          child: MouseRegion(
+                            onEnter: (PointerEvent details) =>
+                                _controller.forward(),
+                            onExit: (PointerEvent details) =>
+                                _controller.reverse(),
+                            child: Container(
+                              height: item['height'],
+                              width: item['width'],
+                              decoration: BoxDecoration(
+                                color: item['color'],
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(10)),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               );
             },
           ),
         ]),
       ),
     );
+  }
+
+  Animation<double> buildAnimation(double start, double end) {
+    return Tween(
+      begin: start,
+      end: end,
+    ).animate(CurvedAnimation(parent: _controller, curve: defaultCurve));
+  }
+
+  List getData() {
+    return [
+      {
+        'rotateAnimation': rot1,
+        'translateAnimation': translate1,
+        'color': Colors.pink,
+        'height': bigCardHeight,
+        'width': bigCardWidth,
+        'heightFactor': 0.3,
+        'widthFactor': 1.0,
+        'initialWidthOffset': 0.0,
+      },
+      {
+        'rotateAnimation': smallCardRotateLeft,
+        'translateAnimation': smallCardTranslate,
+        'color': Colors.purple,
+        'height': smallCardHeight,
+        'width': smallCardWidth,
+        'heightFactor': -0.4,
+        'widthFactor': -1.4,
+        'initialWidthOffset': 0.0,
+      },
+      {
+        'rotateAnimation': rot2,
+        'translateAnimation': translate2,
+        'color': Colors.green,
+        'height': bigCardHeight,
+        'width': bigCardWidth,
+        'heightFactor': 0.3,
+        'widthFactor': 1.0,
+        'initialWidthOffset': 0.0,
+      },
+      {
+        'rotateAnimation': smallCardRotateRight,
+        'translateAnimation': smallCardTranslate,
+        'color': Colors.amber,
+        'height': smallCardHeight,
+        'width': smallCardWidth,
+        'heightFactor': -0.0,
+        'widthFactor': 1.0,
+        'initialWidthOffset': -39.0,
+      },
+      {
+        'rotateAnimation': smallCardRotateRight,
+        'translateAnimation': smallCardTranslate,
+        'color': Colors.cyan,
+        'height': smallCardHeight,
+        'width': smallCardWidth,
+        'heightFactor': -1.0,
+        'widthFactor': -2.0,
+        'initialWidthOffset': 0.0,
+      },
+      {
+        'rotateAnimation': rot3,
+        'translateAnimation': translate3,
+        'color': Colors.blue,
+        'height': bigCardHeight,
+        'width': bigCardWidth,
+        'heightFactor': 0.3,
+        'widthFactor': 1.0,
+        'initialWidthOffset': 0.0,
+      },
+      {
+        'rotateAnimation': smallCardRotateLeft,
+        'translateAnimation': smallCardTranslate,
+        'color': Colors.orange,
+        'height': smallCardHeight,
+        'width': smallCardWidth,
+        'heightFactor': -1.3,
+        'widthFactor': 1.6,
+        'initialWidthOffset': -smallCardHeight,
+      },
+      {
+        'rotateAnimation': rot4,
+        'translateAnimation': translate4,
+        'color': Colors.red,
+        'height': bigCardHeight,
+        'width': bigCardWidth,
+        'heightFactor': 0.3,
+        'widthFactor': 1.0,
+        'initialWidthOffset': 0.0,
+      },
+    ];
   }
 }
